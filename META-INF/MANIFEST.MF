@@ -1,0 +1,7 @@
+Manifest-Version: 1.0
+Class-Path: jgoodies-common.jar PDFRenderer-0.9.1.jar jmupdf32.jar apa
+ che-xml-xerces.jar itext.jar loci_tools.jar pdfbox-1.3.1.jar bctsp.ja
+ r bcmail.jar swingx-core-1.6.2.jar ghost4j-1.0.1.jar bcprov.jar forms
+ .jar ij-1.35.jar
+Main-Class: jpdftweak.Main
+
