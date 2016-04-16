@@ -46,7 +46,7 @@ public class PageSizeTab extends Tab {
             scaleJustify, scalePortraitUnits, scaleLandscapeUnits;
     private ScaleCustomSizeDialog scaleSizeDialog;
 
-    private JButton updatePreview;
+    private JButton updatePrevieww;
     private PdfTweak pdfTweak;
     private Preview previewPanel;
     private InputTab inputTab;
@@ -68,6 +68,40 @@ public class PageSizeTab extends Tab {
     public void setPreviewPanel(Preview previewPanel) {
         this.previewPanel = previewPanel;
     }
+
+    private void updatePreview () {
+        if (pdfTweak!=null) {
+            try {
+                PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
+                previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue);
+            } catch (IOException x) {
+                x.printStackTrace();
+            } catch (DocumentException x) {
+                x.printStackTrace();
+            }
+        }
+    }
+
+    private void setPreviewActionListeners() {
+        ActionListener al = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                updatePreview();
+            }
+        };
+        for (Component c : this.getComponents()){
+            if (c instanceof JComboBox){
+                ((JComboBox)c).addActionListener(al);
+            }
+            if (c instanceof JTextField){
+                ((JTextField)c).addActionListener(al);
+            }
+            if (c instanceof NumberField){
+                ((NumberField)c).addActionListener(al);
+            }
+        }
+    }
+
 
     private void initComponents() {
         cropPages = new JCheckBox("Crop to:");
@@ -99,7 +133,7 @@ public class PageSizeTab extends Tab {
         rotateLandscape = new JComboBox(new String[]{
             "Keep", "Right", "Upside-Down", "Left"
         });
-        
+
         rotatePortraitUnits = new JComboBox(new Object[]{
             "inches", "mm", "points"
         });
@@ -382,10 +416,12 @@ public class PageSizeTab extends Tab {
         updateScaleSize();
         
         preserveHyperlinks = new JCheckBox("Preserve annotations (EXPERIMENTAL)");
+
+        //setPreviewActionListeners();
     }
     
     public PageSizeTab(MainForm mf) {
-        super(new FormLayout("f:p, f:p:g, 30dlu, f:p, 30dlu, f:p, f:p, f:p, f:p",
+        super(new FormLayout("f:p, f:p:g, 30dlu, f:p, 30dlu, f:p, f:p, f:p, f:p:g",
                 "f:p, 10dlu,f:p,f:p,f:p, f:p, f:p, 10dlu, f:p, 10dlu, f:p,f:p, f:p,f:p, f:p,f:p,f:p,f:p, 10dlu, f:p, f:p:g"));
         
         initComponents();
@@ -452,24 +488,24 @@ public class PageSizeTab extends Tab {
         previewPanel = new Preview(new Dimension(400, 500));
         this.add(previewPanel ,cc.xywh(9, 5, 1, 17));
 
-        updatePreview= new JButton("Update preview");
-        updatePreview.addActionListener(new ActionListener() {
+        updatePrevieww = new JButton("Update preview");
+        updatePrevieww.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-               if (pdfTweak!=null) {
-                   try {
-                       PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
-                       previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue);
-                   } catch (IOException x) {
-                       x.printStackTrace();
-                   } catch (DocumentException x) {
-                       x.printStackTrace();
-                   }
-               }
+                if (pdfTweak != null) {
+                    try {
+                        PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
+                        previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue);
+                    } catch (IOException x) {
+                        x.printStackTrace();
+                    } catch (DocumentException x) {
+                        x.printStackTrace();
+                    }
+                }
             }
         });
 
-        this.add(updatePreview, cc.xyw(9, 4, 1));
+        //this.add(updatePrevieww, cc.xyw(9, 4, 1));
 
         SpinnerModel spinnerModel =
                 new SpinnerNumberModel(100, //initial value
@@ -480,9 +516,12 @@ public class PageSizeTab extends Tab {
         zoom.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
                zoomValue =(int)((JSpinner)e.getSource()).getValue();
+                updatePreview();
             }
         });
-        this.add(zoom, cc.xyw(9,3,1));
+        this.add(zoom, cc.xyw(9,4,1));
+
+        setPreviewActionListeners();
     }
 
     protected void updateScaleSize() {

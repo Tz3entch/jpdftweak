@@ -6,6 +6,7 @@ import com.sun.pdfview.PDFFile;
 import com.sun.pdfview.PDFPage;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -27,8 +28,9 @@ public class Preview extends JPanel {
 
         listModel = new DefaultListModel();
         list = new JList<>(listModel);
-
-        list.setCellRenderer(new myRenderer());
+        myRenderer r = new myRenderer();
+        r.setHorizontalAlignment(JLabel.CENTER);
+        list.setCellRenderer(r);
         list.setLayoutOrientation(JList.VERTICAL);
         list.setBackground(Color.gray);
         //list.setVisibleRowCount(-1);
@@ -38,7 +40,7 @@ public class Preview extends JPanel {
         jsp.setPreferredSize(d);
 
 
-        add(jsp, cc.xyw(1,1,1));
+        add(jsp, cc.xy(1,1));
 
     }
 
