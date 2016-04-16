@@ -99,6 +99,9 @@ public class PageSizeTab extends Tab {
             if (c instanceof NumberField){
                 ((NumberField)c).addActionListener(al);
             }
+            if (c instanceof JCheckBox){
+                ((JCheckBox)c).addActionListener(al);
+            }
         }
     }
 
