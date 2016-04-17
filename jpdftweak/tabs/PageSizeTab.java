@@ -50,8 +50,10 @@ public class PageSizeTab extends Tab {
     private PdfTweak pdfTweak;
     private Preview previewPanel;
     private InputTab inputTab;
-    private JSpinner zoom;
+    private JSpinner zoomSpinner;
+    private JSpinner dpi;
     private float zoomValue = 100;
+    private float dpiValue = 100;
 
     public void setInputTab(InputTab inputTab) {this.inputTab = inputTab;}
 
@@ -73,7 +75,7 @@ public class PageSizeTab extends Tab {
         if (pdfTweak!=null) {
             try {
                 PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
-                previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue);
+                previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue, dpiValue);
             } catch (IOException x) {
                 x.printStackTrace();
             } catch (DocumentException x) {
@@ -491,38 +493,35 @@ public class PageSizeTab extends Tab {
         previewPanel = new Preview(new Dimension(400, 500));
         this.add(previewPanel ,cc.xywh(9, 5, 1, 17));
 
-        updatePrevieww = new JButton("Update preview");
-        updatePrevieww.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (pdfTweak != null) {
-                    try {
-                        PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
-                        previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue);
-                    } catch (IOException x) {
-                        x.printStackTrace();
-                    } catch (DocumentException x) {
-                        x.printStackTrace();
-                    }
-                }
+        SpinnerModel spinnerModel =
+                new SpinnerNumberModel(100, //initial value
+                        10, //min
+                        300, //max
+                        10);//step
+        dpi = new JSpinner(spinnerModel);
+        dpi.addChangeListener(new ChangeListener() {
+            public void stateChanged(ChangeEvent e) {
+                dpiValue = (int) ((JSpinner) e.getSource()).getValue();
+                updatePreview();
             }
         });
+        this.add(dpi, cc.xyw(9,4,1));
 
         //this.add(updatePrevieww, cc.xyw(9, 4, 1));
 
-        SpinnerModel spinnerModel =
+        SpinnerModel spinnerModel2 =
                 new SpinnerNumberModel(100, //initial value
                         10, //min
                         200, //max
                         10);//step
-        zoom = new JSpinner(spinnerModel);
-        zoom.addChangeListener(new ChangeListener() {
+        zoomSpinner = new JSpinner(spinnerModel2);
+        zoomSpinner.addChangeListener(new ChangeListener() {
             public void stateChanged(ChangeEvent e) {
-               zoomValue =(int)((JSpinner)e.getSource()).getValue();
+                zoomValue = (int) ((JSpinner) e.getSource()).getValue();
                 updatePreview();
             }
         });
-        this.add(zoom, cc.xyw(9,4,1));
+      //  this.add(zoomSpinner, cc.xyw(9,4,1));
 
         setPreviewActionListeners();
     }
