@@ -19,6 +19,9 @@ public class Preview extends JPanel {
     private DefaultListModel listModel;
     private JList<JLabel> list;
     private Dimension dim;
+    private JScrollPane jsp;
+    private final float mmPerPixel = (25.4f/Toolkit.getDefaultToolkit().getScreenResolution());
+    private float scaleValue;
 
 
     public Preview(Dimension d)  {
@@ -31,12 +34,12 @@ public class Preview extends JPanel {
         listModel = new DefaultListModel();
         list = new JList<>(listModel);
         myRenderer r = new myRenderer();
-        r.setHorizontalAlignment(JLabel.CENTER);
+       // r.setHorizontalAlignment(JLabel.CENTER);
         list.setCellRenderer(r);
         list.setLayoutOrientation(JList.VERTICAL);
         list.setBackground(Color.gray);
         //list.setVisibleRowCount(-1);
-        JScrollPane jsp = new JScrollPane(list);
+        jsp = new JScrollPane(list);
 
 ///////
         createRuler(jsp);
@@ -60,9 +63,8 @@ public class Preview extends JPanel {
             corners[i].setOpaque(true);
         }
 
-        final float mmPerPixel = (25.4f/Toolkit.getDefaultToolkit().getScreenResolution());
-        System.out.println(mmPerPixel);
-        System.out.println(Toolkit.getDefaultToolkit().getScreenResolution());
+//        System.out.println(mmPerPixel);
+//        System.out.println(Toolkit.getDefaultToolkit().getScreenResolution());
 
         JLabel rowheader = new JLabel() {
             public void paintComponent(Graphics g) {
@@ -110,11 +112,53 @@ public class Preview extends JPanel {
         scrollPane.setCorner(JScrollPane.UPPER_RIGHT_CORNER, corners[3]);
     }
 
-    public void updatePreview(ByteBuffer buf, float zoom, float dpi) {
+    private void updateRuler(JScrollPane scrollPane) {
+        JLabel rowheader = new JLabel() {
+            public void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Rectangle rect = g.getClipBounds();
+                for (int i = 10 - (rect.y % 10); i < rect.height; i += 10) {
+                    g.drawLine(0, rect.y + (int)(i*scaleValue/mmPerPixel), 3, rect.y + (int)(i*scaleValue/mmPerPixel));
+                    g.drawString("" + (rect.y + i), 6, rect.y + (int)(i*scaleValue/mmPerPixel) + 3);
+                }
+            }
+
+            public Dimension getPreferredSize() {
+                return new Dimension(25, (int) dim.getHeight()
+                );
+            }
+        };
+        rowheader.setBackground(Color.lightGray);
+        rowheader.setOpaque(true);
+
+
+        JLabel columnheader = new JLabel() {
+
+            public void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Rectangle r = g.getClipBounds();
+                for (int i = 10 - (r.x % 10); i < r.width; i += 10) {
+                    g.drawLine(r.x + (int)(i*scaleValue/mmPerPixel), 0, r.x + (int)(i*scaleValue/mmPerPixel), 3);
+                    g.drawString("" + (r.x + i), r.x + (int)(i*scaleValue/mmPerPixel) - 10, 16);
+                }
+            }
+
+            public Dimension getPreferredSize() {
+                return new Dimension((int) dim.getWidth(),
+                        25);
+            }
+        };
+        columnheader.setBackground(Color.lightGray);
+        columnheader.setOpaque(true);
+
+        scrollPane.setRowHeaderView(rowheader);
+        scrollPane.setColumnHeaderView(columnheader);
+    }
+
+    public void updatePreview(ByteBuffer buf, float dpi) {
 
         clearPreview();
 
-            float zoomMod = zoom/100;
             float dpiMod = dpi/100;
             PDFFile pdffile = null;
             try {
@@ -125,45 +169,36 @@ public class Preview extends JPanel {
             Image img;
             for (int i = 0; i < pdffile.getNumPages(); i++) {
                 PDFPage page = pdffile.getPage(i+1);
-                Rectangle rect =
-                        new Rectangle(0, 0, (int)(page.getBBox().getWidth()), (int)(page.getBBox().getHeight()));
-                int height = (int)(page.getBBox().getHeight()*zoomMod);
 
-                int width = (int)(page.getAspectRatio()*height);
+                int rwidth = (int) (page.getBBox().getWidth());
+                int rheight = (int) (page.getBBox().getHeight());
+                Rectangle rect =
+                        new Rectangle(0, 0, rwidth, rheight);
+
+                int width;
+                int height;
+                if (rheight >= rwidth) {
+                     height = jsp.getHeight() - 25;
+                     width = (int) (page.getAspectRatio() * height);
+                } else {
+                    width =jsp.getWidth() - 25;
+                    height = (int) (width/page.getAspectRatio());
+
+                }
 
                 img = page.getImage(width, height, rect, null, true, true);
                 img = img.getScaledInstance((int)(width*dpiMod), (int)(height*dpiMod), Image.SCALE_DEFAULT);
                 img = img.getScaledInstance(width, height, Image.SCALE_DEFAULT);
                 listModel.addElement(new JLabel(new ImageIcon(img)));
+
+                if(i==0) {
+                    scaleValue = (width*1f)/(rwidth*1f);
+                }
             }
+        updateRuler(jsp);
 
     }
-
-    public void updatePreview(ByteBuffer buf) {
-
-        clearPreview();
-
-
-            PDFFile pdffile = null;
-            try {
-                pdffile = new PDFFile(buf);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            Image img;
-            for (int i = 0; i < pdffile.getNumPages(); i++) {
-                PDFPage page = pdffile.getPage(i+1);
-                int width = (int)(page.getAspectRatio()*height);
-
-                Rectangle rect =
-                        new Rectangle(0, 0, (int)page.getBBox().getWidth(), (int)page.getBBox().getHeight());
-
-                img = page.getImage(width, height, rect, null, true, true);
-                listModel.addElement(new JLabel(new ImageIcon(img)));
-            }
-
-    }
-
+    
     public void clearPreview() {
         listModel.clear();
     }

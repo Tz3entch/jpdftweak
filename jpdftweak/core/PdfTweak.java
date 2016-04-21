@@ -66,7 +66,7 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.interactive.annotation.PDAnnotation;
 import sun.misc.IOUtils;
 
-public class PdfTweak {
+public class PdfTweak implements Cloneable {
 
     private static final PdfName[] INFO_NAMES = {
         PdfName.TITLE,
@@ -134,6 +134,10 @@ public class PdfTweak {
     private PdfToImage pdfImages;
     private boolean mergeByDir, useTempFiles;
 
+    private File file;
+    private File getFile() {return file;}
+
+
     private String rootFolder;
     
     private ArrayList<List<PDAnnotation>> pdAnnotations = new ArrayList<List<PDAnnotation>>();
@@ -147,6 +151,9 @@ public class PdfTweak {
         }
         currentReader = singleFile.getReader();
         File f = singleFile.getFile();
+
+        this.file=f;
+
         inputFilePath = f.getAbsoluteFile().getParentFile().getAbsolutePath();
         inputFileFullName = f.getName();
         inputFileParent = f.getAbsoluteFile().getParentFile().getName();
@@ -912,11 +919,15 @@ public class PdfTweak {
             outDialog.setPageCount(currentReader.getNumberOfPages());
         }
         for (int i = 1; i <= currentReader.getNumberOfPages(); i++) {
+            System.out.println( i);
             if (outDialog != null) {
                 outDialog.updatePagesProgress();
             }
             int rotation = currentReader.getPageRotation(i);
+            System.out.println(rotation);
             Rectangle r = currentReader.getPageSizeWithRotation(i);
+            System.out.println("w "+r.getWidth());
+            System.out.println("h "+r.getHeight());
             int count;
             if (r.getWidth() > r.getHeight()) { // landscape
                 if (param.isLandscape()) {
@@ -1840,5 +1851,14 @@ public class PdfTweak {
 
             annot.setRectangle(rect);
         }
+    }
+
+    public static PdfTweak newInstance(PdfTweak pdfTweak) {
+        try {
+            return  new PdfTweak(new PdfInputFile(new File(pdfTweak.getFile().getPath()), ""), false, null);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

@@ -3,11 +3,15 @@ package jpdftweak.tabs;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.io.IOException;
 
 import javax.swing.*;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 
 import jpdftweak.core.PageDimension;
 import jpdftweak.core.PdfTweak;
@@ -48,12 +52,20 @@ public class PageSizeTab extends Tab {
 
     private JButton updatePrevieww;
     private PdfTweak pdfTweak;
+    private PdfTweak tempTweak;
     private Preview previewPanel;
     private InputTab inputTab;
     private JSpinner zoomSpinner;
     private JSpinner dpi;
     private float zoomValue = 100;
     private float dpiValue = 100;
+    private ActionListener al;
+    private Timer recalculateTimer = new Timer( 500, new ActionListener() {
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            updatePreview();
+        }
+    } );
 
     public void setInputTab(InputTab inputTab) {this.inputTab = inputTab;}
 
@@ -71,41 +83,83 @@ public class PageSizeTab extends Tab {
         this.previewPanel = previewPanel;
     }
 
+    private void updateTweak() {
+
+        try {
+            tempTweak = PdfTweak.newInstance(pdfTweak);
+            tempTweak = run2(tempTweak, new OutputProgressDialog());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (DocumentException e) {
+            e.printStackTrace();
+        }
+    }
+
     private void updatePreview () {
         if (pdfTweak!=null) {
             try {
-                PdfTweak pdfTweak1 = run(pdfTweak, new OutputProgressDialog());
-                previewPanel.updatePreview(pdfTweak1.getByteBuffer(), zoomValue, dpiValue);
+                    updateTweak();
+                    previewPanel.updatePreview(tempTweak.getByteBuffer(), dpiValue);
             } catch (IOException x) {
                 x.printStackTrace();
             } catch (DocumentException x) {
                 x.printStackTrace();
             }
+
         }
     }
 
     private void setPreviewActionListeners() {
-        ActionListener al = new ActionListener() {
+            al = new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                updatePreview();
+                if(!(e.getSource() instanceof JComboBox && ((JComboBox) e.getSource()).getSelectedItem().equals("Custom Size"))) {
+                 updatePreview();
+                }
             }
         };
         for (Component c : this.getComponents()){
             if (c instanceof JComboBox){
+                System.out.println(((JComboBox) c).getItemAt(0));
                 ((JComboBox)c).addActionListener(al);
             }
             if (c instanceof JTextField){
-                ((JTextField)c).addActionListener(al);
-            }
-            if (c instanceof NumberField){
+                System.out.println(((JTextField) c).getText());
+                ((JTextField)c).getDocument().addDocumentListener(new DocumentListener() {
+                    @Override
+                    public void insertUpdate(DocumentEvent e) {
+                        updatePreview();
+                    }
+
+                    @Override
+                    public void removeUpdate(DocumentEvent e) {
+                        updatePreview();
+                    }
+
+                    public void changedUpdate(DocumentEvent e) {
+                       updatePreview();
+                    }
+                });
+                if (c instanceof NumberField){
                 ((NumberField)c).addActionListener(al);
             }
-            if (c instanceof JCheckBox){
+                if (c instanceof JCheckBox){
                 ((JCheckBox)c).addActionListener(al);
             }
         }
-    }
+
+        this.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                super.componentResized(e);
+                if ( recalculateTimer.isRunning() ){
+                    recalculateTimer.restart();
+                } else {
+                    recalculateTimer.start();
+                }
+            }
+        });
+    } }
 
 
     private void initComponents() {
@@ -428,7 +482,10 @@ public class PageSizeTab extends Tab {
     public PageSizeTab(MainForm mf) {
         super(new FormLayout("f:p, f:p:g, 30dlu, f:p, 30dlu, f:p, f:p, f:p, f:p:g",
                 "f:p, 10dlu,f:p,f:p,f:p, f:p, f:p, 10dlu, f:p, 10dlu, f:p,f:p, f:p,f:p, f:p,f:p,f:p,f:p, 10dlu, f:p, f:p:g"));
-        
+
+
+        recalculateTimer.setRepeats( false );
+
         initComponents();
         
         CellConstraints cc = new CellConstraints();
@@ -496,7 +553,7 @@ public class PageSizeTab extends Tab {
         SpinnerModel spinnerModel =
                 new SpinnerNumberModel(100, //initial value
                         10, //min
-                        300, //max
+                        100, //max
                         10);//step
         dpi = new JSpinner(spinnerModel);
         dpi.addChangeListener(new ChangeListener() {
@@ -507,23 +564,11 @@ public class PageSizeTab extends Tab {
         });
         this.add(dpi, cc.xyw(9,4,1));
 
-        //this.add(updatePrevieww, cc.xyw(9, 4, 1));
-
-        SpinnerModel spinnerModel2 =
-                new SpinnerNumberModel(100, //initial value
-                        10, //min
-                        200, //max
-                        10);//step
-        zoomSpinner = new JSpinner(spinnerModel2);
-        zoomSpinner.addChangeListener(new ChangeListener() {
-            public void stateChanged(ChangeEvent e) {
-                zoomValue = (int) ((JSpinner) e.getSource()).getValue();
-                updatePreview();
-            }
-        });
-      //  this.add(zoomSpinner, cc.xyw(9,4,1));
 
         setPreviewActionListeners();
+        scaleSize.removeActionListener(al);
+        scaleSize2.removeActionListener(al);
+        scaleSize3.removeActionListener(al);
     }
 
     protected void updateScaleSize() {
@@ -639,6 +684,79 @@ public class PageSizeTab extends Tab {
             scaleParams.setJustifyPortrait(scaleJustifyPortrait.getSelectedIndex());
             scaleParams.setJustifyLandscape(scaleJustifyLandscape.getSelectedIndex());
             
+            tweak.scalePages(scaleParams, outDialog);
+        }
+        return tweak;
+    }
+
+    public PdfTweak run2(PdfTweak tweak, OutputProgressDialog outDialog) throws IOException, DocumentException {
+        outDialog.updateTweaksProgress(getTabName());
+//        if (preserveHyperlinks.isSelected()) {
+//            tweak.preserveHyperlinks();
+//        }
+        if (cropPages.isSelected()) {
+            tweak.cropPages((PageBox) cropTo.getSelectedItem(), outDialog);
+        }
+        if (rotatePages.isSelected()) {
+            RotateParameters rotateParams = new RotateParameters();
+            rotateParams.setLandscapeCount(rotateLandscape.getSelectedIndex());
+            rotateParams.setPortraitCount(rotatePortrait.getSelectedIndex());
+            rotateParams.setIsLandscape(rotateConditionLandscape.isSelected());
+            rotateParams.setIsPortrait(rotateConditionPortait.isSelected());
+
+            double[] landscapeLimits = new double[2];
+            landscapeLimits[0] = toPoints(Double.parseDouble(rotateLandscapeLowerLimit.getText()), rotateLandscapeUnits.getSelectedIndex());
+            landscapeLimits[1] = toPoints(Double.parseDouble(rotateLandscapeUpperLimit.getText()), rotateLandscapeUnits.getSelectedIndex());
+            rotateParams.setLandscapeLimits(landscapeLimits);
+
+            double[] portraitLimits = new double[2];
+            portraitLimits[0] = toPoints(Double.parseDouble(rotatePortraitLowerLimit.getText()), rotatePortraitUnits.getSelectedIndex());
+            portraitLimits[1] = toPoints(Double.parseDouble(rotatePortraitUpperLimit.getText()), rotatePortraitUnits.getSelectedIndex());
+            rotateParams.setPortraitLimits(portraitLimits);
+
+            tweak.rotatePages(rotateParams, outDialog);
+        }
+        if (fixRotation.isSelected()) {
+            tweak.removeRotation(outDialog);
+        }
+        if (scalePages.isSelected()) {
+            float ww, hh;
+            try {
+                ww = Float.parseFloat(scaleWidth.getText());
+                hh = Float.parseFloat(scaleHeight.getText());
+            } catch (NumberFormatException ex) {
+                throw new IOException("Invalid scale size");
+            }
+
+            ScaleParameters scaleParams = new ScaleParameters();
+            scaleParams.setNoEnlarge(scaleCenter.isSelected());
+            scaleParams.setPreserveAspectRatio(!scaleNoPreserve.isSelected());
+            scaleParams.setIsPortrait(scaleConditionPortait.isSelected());
+            scaleParams.setIsLandscape(scaleConditionLandscape.isSelected());
+
+            double[] landscapeLimits = new double[2];
+            landscapeLimits[0] = toPoints(Double.parseDouble(scaleLandscapeLowerLimit.getText()), scaleLandscapeUnits.getSelectedIndex());
+            landscapeLimits[1] = toPoints(Double.parseDouble(scaleLandscapeUpperLimit.getText()), scaleLandscapeUnits.getSelectedIndex());
+            scaleParams.setLandscapeLimits(landscapeLimits);
+
+            double[] portraitLimits = new double[2];
+            portraitLimits[0] = toPoints(Double.parseDouble(scalePortraitLowerLimit.getText()), scalePortraitUnits.getSelectedIndex());
+            portraitLimits[1] = toPoints(Double.parseDouble(scalePortraitUpperLimit.getText()), scalePortraitUnits.getSelectedIndex());
+            scaleParams.setPortraitLimits(portraitLimits);
+
+            float width = Float.parseFloat(scaleWidth.getText());
+            float height = Float.parseFloat(scaleHeight.getText());
+            PageDimension pageDim = new PageDimension(
+                    "Final", new Rectangle(width, height), false,
+                    ((PageDimension) scaleSize.getSelectedItem()).isPercentange());
+            scaleParams.setPageDim(pageDim);
+            scaleParams.setPortraitPageDim((PageDimension) scaleSize2.getSelectedItem());
+            scaleParams.setLandscapePageDim((PageDimension) scaleSize3.getSelectedItem());
+
+            scaleParams.setJustify(scaleJustify.getSelectedIndex());
+            scaleParams.setJustifyPortrait(scaleJustifyPortrait.getSelectedIndex());
+            scaleParams.setJustifyLandscape(scaleJustifyLandscape.getSelectedIndex());
+
             tweak.scalePages(scaleParams, outDialog);
         }
         return tweak;

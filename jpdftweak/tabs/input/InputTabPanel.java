@@ -10,6 +10,8 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.util.ArrayList;
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import jpdftweak.core.IntegerList;
 import jpdftweak.core.PdfTweak;
@@ -38,6 +40,8 @@ public class InputTabPanel extends JPanel {
     private Preview previewPanel;
     private PdfTweak pdfTweak;
     private PageSizeTab pageSizeTab;
+    private float dpiValue;
+    private JSpinner resolutionSpinner;
 
     private boolean useTempFiles;
     private final String[] columnHeaders = new String[]{
@@ -128,8 +132,8 @@ public class InputTabPanel extends JPanel {
                 setPdfTweak(pdfTweak);
                 pageSizeTab.setPdfTweak(pdfTweak);
                 try {
-                    previewPanel.updatePreview(pdfTweak.getByteBuffer());
-                    pageSizeTab.getPreviewPanel().updatePreview(pdfTweak.getByteBuffer());
+                    previewPanel.updatePreview(pdfTweak.getByteBuffer(), 100);
+                    pageSizeTab.getPreviewPanel().updatePreview(pdfTweak.getByteBuffer(), 100);
                 } catch (IOException e) {
                     e.printStackTrace();
                 } catch (DocumentException e) {
@@ -203,11 +207,36 @@ public class InputTabPanel extends JPanel {
 
     private void generatePreviewPanel() {
 
+        SpinnerModel spinnerModel =
+                new SpinnerNumberModel(100, 10, 100, 10);
+        resolutionSpinner = new JSpinner(spinnerModel);
+        resolutionSpinner.addChangeListener(new ChangeListener() {
+            public void stateChanged(ChangeEvent e) {
+                dpiValue = (int) ((JSpinner) e.getSource()).getValue();
+                updatePreview();
+            }
+        });
+        this.add(resolutionSpinner, cc.xy(7,1));
+
+
         previewPanel = new Preview(new Dimension(400, 500));
 
         this.add(previewPanel ,cc.xyw(7, 3, 1));
 
     }
+
+    private void updatePreview () {
+        if (pdfTweak!=null) {
+            try {
+                previewPanel.updatePreview(pdfTweak.getByteBuffer(), dpiValue);
+            } catch (IOException x) {
+                x.printStackTrace();
+            } catch (DocumentException x) {
+                x.printStackTrace();
+            }
+        }
+    }
+
     
     private void initializeInputFilesTable() {
         inputFilesTable = new TreeTableComponent(columnHeaders, itemClassType);
